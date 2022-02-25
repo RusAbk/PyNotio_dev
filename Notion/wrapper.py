@@ -1,7 +1,9 @@
 import requests
 from Notion.page import Page
+from Notion.blocks import Block
+from Notion.richtext import RichText
 
-class Notion():
+class Notion:
     key = None
     api_version = '2021-08-16'
 
@@ -43,15 +45,12 @@ class Notion():
 
 
     def get_page(self, page_id):
-        page = Page(self.req_get('https://api.notion.com/v1/pages/' + page_id))
+        page = Page(self.req_get('https://api.notion.com/v1/pages/' + page_id), self)
         page.set_block_info(self.req_get('https://api.notion.com/v1/blocks/' + page_id))
         page.data['has_content'] = page.data['block_info']['has_children']
         if page.data['has_content']:
             page.set_content(self.req_get('https://api.notion.com/v1/blocks/' + page_id + '/children'))
         return page
-
-    def append_block_to(self, block, parent_id):
-        pass
 
 
     
@@ -62,3 +61,18 @@ class Notion():
         if len(sorts) != 0:
             data['sorts']
         return self.req_post('https://api.notion.com/v1/databases/' + db_id + '/query', data)
+
+    
+    def create_rich_text(self, text):
+        return RichText(text)
+
+    def create_paragraph(self, rt = None):
+        b = Block()
+        b.type = 'paragraph'
+        if rt is not None:
+            if isinstance(rt, list):
+                b.rich_text_objects += rt
+            else:
+                b.append_richtext(rt)
+        return b
+        
