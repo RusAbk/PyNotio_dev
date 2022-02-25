@@ -3,13 +3,23 @@ from Notion.blocks import Block
 import json
 
 class Page:
-    def __init__(self, data, notion_obj = None):
+    def __init__(self, id, lazy = False, notion_obj = None):
         if notion_obj is None:
             raise RuntimeError('Page instance can be created only using Notion object')
         else:
-            self.data = data
-            self.id = data['id']
+            self.id = id
             self.notion_obj = notion_obj
+            self.data = { 
+                'id': id,
+                'raw_content': {
+                    'results': []
+                },
+                'plaintext': []
+            }
+            self.content = []
+            if not lazy:
+                self.load_data().load_content()
+
 
     def __str__(self):
         return self.get_json()
@@ -18,19 +28,6 @@ class Page:
 
     def get_json(self):
         return json.dumps(self.data, indent=4)
-
-    
-    def set_block_info(self, block_info):
-        self.data['block_info'] = block_info
-
-    def set_content(self, content):
-        self.data['raw_content'] = content
-        self.content = []
-        self.data['plaintext'] = []
-        for block in content['results']:
-            b = Block(block)
-            self.content.append(b)
-            self.data['plaintext'].append(b.get_plaintext())
 
 
     def get_data(self):
@@ -47,13 +44,31 @@ class Page:
 
     def get_prop(self, prop):
         return Prop(self.data['properties'][prop])
-
     def get_prop_value(self, prop):
-        return Prop(self.data['properties'][prop]).get_value()
+        return self.get_prop(prop).get_value()
         
 
     def append_block(self, block):
-        data = {
-            'children': [block.get_json()]
-        }
-        self.notion_obj.req_patch('https://api.notion.com/v1/blocks/' + self.id + '/children', data)
+        data = { 'children': [block.get_json()] }
+        self.notion_obj.req_patch(f'https://api.notion.com/v1/blocks/{self.id}/children', data)
+        self.data['raw_content']['results'].append(block.get_json())
+        self.data['plaintext'].append(block.get_plaintext())
+        self.content.append(block)
+        return self
+
+
+    def load_data(self):
+        self.data = self.notion_obj.req_get(f'https://api.notion.com/v1/pages/{self.id}')
+        return self
+
+    def load_content(self):
+        self.data['has_children'] = self.notion_obj.req_get(f'https://api.notion.com/v1/blocks/{self.id}')['has_children']
+        if self.data['has_children']:
+            self.data['raw_content'] = self.notion_obj.req_get(f'https://api.notion.com/v1/blocks/{self.id}/children')
+            self.content = []
+            self.data['plaintext'] = []
+            for block in self.data['raw_content']['results']:
+                b = Block(block)
+                self.content.append(b)
+                self.data['plaintext'].append(b.get_plaintext())
+        return self
