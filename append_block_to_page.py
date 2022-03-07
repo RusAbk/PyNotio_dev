@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import json
 
-from Notion.wrapper import Notion
+from pynotio.wrapper import Notion
 from pprint import pprint
 
 
