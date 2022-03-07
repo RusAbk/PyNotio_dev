@@ -1,0 +1,3 @@
+[submodule "pynotio_dev"]
+	path = pynotio_dev
+	url = https://github.com/Ruslanabk/PyNotio-Package
